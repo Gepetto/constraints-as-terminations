@@ -32,5 +32,4 @@ outputs/
 *.hydra*
 /isaacgymenvs/wandb
 runs*
-*.png
 *.npy
