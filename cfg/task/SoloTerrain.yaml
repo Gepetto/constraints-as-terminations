@@ -112,13 +112,13 @@ env:
     torqueRewardScale: -0.0
     jointAccRewardScale: -0.0
     baseHeightRewardScale: 0.0
-    feetAirTimeRewardScale: 3.0 # Best: 1.0
+    feetAirTimeRewardScale: 0.0 # 3.0 (as reward)
     kneeCollisionRewardScale: -0.0
     feetStumbleRewardScale: -0.0
     actionRateRewardScale: -0.0
     dofPosRewardScale: 0.0
     dofVelLimitRewardScale: 0
-    footTwoContactRewardScale: 1.0
+    footTwoContactRewardScale: 0.0 # 1.0 (as reward)
     hipRewardScale: -0.0
 
     # Misc quantities for rewards
