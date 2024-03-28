@@ -1,6 +1,6 @@
 # Constraints As Terminations (CaT)
 
-[Website](https://constraints-as-terminations.github.io) | [Technical Paper](https://constraints-as-terminations.github.io) | [Videos](https://constraints-as-terminations.github.io)
+[Website](https://constraints-as-terminations.github.io) | [Technical Paper](https://arxiv.org/abs/2403.18765) | [Videos](https://www.youtube.com/watch?v=crWoYTb8QvU)
 
 ![](assets/teaser.png)
 
@@ -116,13 +116,14 @@ python3 train.py task=SoloTerrain num_envs=1 test=True task.env.enableDebugVis=T
 ## Citing
 
 Please cite this work as:
-<!---
+
 ```
-@misc{makoviychuk2021isaac,
-      title={Isaac Gym: High Performance GPU-Based Physics Simulation For Robot Learning}, 
-      author={Viktor Makoviychuk and Lukasz Wawrzyniak and Yunrong Guo and Michelle Lu and Kier Storey and Miles Macklin and David Hoeller and Nikita Rudin and Arthur Allshire and Ankur Handa and Gavriel State},
-      year={2021},
-      journal={arXiv preprint arXiv:2108.10470}
+@misc{chanesane2024cat,
+      title={CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning},
+      author={Elliot Chane-Sane and Pierre-Alexandre Leziart and Thomas Flayols and Olivier Stasse and Philippe Souères and Nicolas Mansard},
+      year={2024},
+      eprint={2403.18765},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
 }
 ```
--->
