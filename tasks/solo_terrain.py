@@ -133,6 +133,7 @@ class SoloTerrain(VecTask):
         self.flat_terrain_threshold = self.cfg["env"]["learn"]["flatTerrainThreshold"]
         
         # Compute the dimension of the observations
+        self.num_height_points = len(self.cfg["env"]["learn"]["measured_points_x"]) * len(self.cfg["env"]["learn"]["measured_points_y"])
         self.prepare_dim_obs_functions()
         self.sampleObsSize = self.get_dim_observations()
         self.numHistorySamples = self.cfg["env"]["numHistorySamples"]
@@ -164,7 +165,6 @@ class SoloTerrain(VecTask):
         self.control_freq_inv = 0
 
         # Prepare the height scan
-        self.num_height_points = len(self.cfg["env"]["learn"]["measured_points_x"]) * len(self.cfg["env"]["learn"]["measured_points_y"])
         self.height_points = self.prepare_height_points()
         self.measured_heights = torch.zeros(self.num_envs, self.num_height_points, device=self.device, requires_grad=False)
 
