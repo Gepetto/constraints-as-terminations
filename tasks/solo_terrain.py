@@ -1782,7 +1782,6 @@ class Terrain:
         if self.type in ["none", 'plane']:
             return
 
-        self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.float32)
         meshified_terrains = False
         if not meshified_terrains:
             # Create subterrains on the fly based on Isaac subterrain primitives
@@ -1816,6 +1815,7 @@ class Terrain:
             self.border = int(self.border_size / self.horizontal_scale)
             self.tot_cols = int(self.env_cols * self.width_per_env_pixels) + 2 * self.border
             self.tot_rows = int(self.env_rows * self.length_per_env_pixels) + 2 * self.border
+            self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.float32)
 
             self.vertical_scale = 0.005
             if cfg["curriculum"]:
