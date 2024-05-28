@@ -34,10 +34,10 @@ Download the Isaac Gym Preview 4 release from the [Isaac Gym website](https://de
 follow the installation instructions in the documentation. You can use the conda environment provided by `create_conda_env_rlgpu.sh` 
 or manually install Isaac in a virtual Python environment.
 
-**Virtual environment:** as binaries for Isaac Gym Preview 4 have been compiled a few years ago, precompiled bindings are only provided for Python 3.6, 3.7 and 3.8 so you might encounter issues trying to use them with newer Python versions. On a recent system we recommand to use Python 3.8.16 through [pyenv](https://github.com/pyenv/pyenv) which will allow you to install 3.8.16 without messing with your main Python installation. You can then create a `.python-version` file in your work directory, in which you just write `3.8.16`. If you type `python` in a terminal when placed in this directory, it should now use pyenv's Python 3.8.16 automatically. Finally, you can create a [virtual environment](https://docs.python.org/fr/3/library/venv.html) for your Python 3.8.16 (that we call `venv`).
+**Virtual environment:** as binaries for Isaac Gym Preview 4 have been compiled a few years ago, precompiled bindings are only provided for Python 3.6, 3.7 and 3.8 so you might encounter issues trying to use them with newer Python versions. On a recent system we recommand to use Python 3.8.16 through [pyenv](https://github.com/pyenv/pyenv) which will allow you to install 3.8.16 without messing with your main Python installation. You can then create a `.python-version` file in your work directory, in which you just write `3.8.16`. If you type `python` in a terminal when placed in this directory, it should now use pyenv's Python 3.8.16 automatically. Finally, you can create a [virtual environment](https://docs.python.org/3/library/venv.html) for your Python 3.8.16 (that we call `venv`).
 
 ```bash
-python3 -m pip install venv
+python3 -m pip install virtualenv
 python3 -m venv venv
 source venv/bin/activate
 ```
