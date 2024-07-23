@@ -8,6 +8,8 @@
 
 This repository contains the code associated with the article **CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning** by Elliot Chane-Sane\*, Pierre-Alexandre Leziart\*, Thomas Flayols, Olivier Stasse, Philippe Souères and Nicolas Mansard.
 
+This paper has been accepted for the 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS 2024).
+
 This code relies on the high performance RL library [RL Games](https://github.com/Denys88/rl_games) and a reinforcement learning wrapper for the NVIDIA Isaac Gym simulator provided by [IsaacGymEnvs](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs.git).
 
 We lightly modified both RL Games and IsaacGymEnvs to integrate our method in a minimal way, feel free to check `cat_common.py`, `cat_experience.py` and `isaacgymenvs_make.py` in the `utils` directory.
