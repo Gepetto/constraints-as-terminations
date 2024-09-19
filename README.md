@@ -120,12 +120,10 @@ python3 train.py task=SoloTerrain num_envs=1 test=True task.env.enableDebugVis=T
 Please cite this work as:
 
 ```
-@misc{chanesane2024cat,
-      title={CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning},
+@inproceedings{chanesane2024cat,
       author={Elliot Chane-Sane and Pierre-Alexandre Leziart and Thomas Flayols and Olivier Stasse and Philippe Souères and Nicolas Mansard},
-      year={2024},
-      eprint={2403.18765},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO}
+      booktitle={2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
+      title={CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning},
+      year={2024}
 }
 ```
