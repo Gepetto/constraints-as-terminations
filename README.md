@@ -6,6 +6,8 @@
 
 ## About this repository
 
+<b style="color:red;">🚀 New</b>: Check out the [IsaacLab](https://isaac-sim.github.io/IsaacLab/main/index.html) implementation on the <code>IsaacLab</code> branch!
+
 This repository contains the code associated with the article **CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning** by Elliot Chane-Sane\*, Pierre-Alexandre Leziart\*, Thomas Flayols, Olivier Stasse, Philippe Souères and Nicolas Mansard.
 
 This paper has been accepted for the 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS 2024).
