@@ -6,7 +6,7 @@
 
 ## About this repository
 
-🚀 **New**: Check out the [IsaacLab](https://isaac-sim.github.io/IsaacLab/main/index.html) implementation on the <code>IsaacLab</code> branch!
+🚀 **New**: Check out the [IsaacLab](https://isaac-sim.github.io/IsaacLab/main/index.html) implementation on the [<code>IsaacLab</code>](https://github.com/Gepetto/constraints-as-terminations/tree/IsaacLab) branch!
 
 This repository contains the code associated with the article **CaT: Constraints as Terminations for Legged Locomotion Reinforcement Learning** by Elliot Chane-Sane\*, Pierre-Alexandre Leziart\*, Thomas Flayols, Olivier Stasse, Philippe Souères and Nicolas Mansard.
 
