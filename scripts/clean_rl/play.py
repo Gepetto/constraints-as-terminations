@@ -8,8 +8,9 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+from pathlib import Path
 
-from omni.isaac.lab.app import AppLauncher
+from isaaclab.app import AppLauncher
 
 # local imports
 import cli_args  # isort: skip
@@ -53,8 +54,8 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import os
 
-from omni.isaac.lab.utils.dict import print_dict
-from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
+from isaaclab.utils.dict import print_dict
+from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 
 
 from cat_envs.tasks.utils.cleanrl.ppo import Agent
@@ -109,10 +110,34 @@ def main():
 
     actor = Agent(env).to(device)
     actor.load_state_dict(actor_sd)
+    actor.eval()
 
     obs = env.reset()[0]["policy"]
 
-    for _ in range(2000):
+    # export model to onnx and .pt
+    exported_path = os.path.join(log_dir, "exported")
+    Path(exported_path).mkdir(parents=True, exist_ok=True)
+
+    dummy_input = torch.randn(1, obs.shape[-1]).to(device)
+    onnx_path = os.path.join(exported_path, "model.onnx")
+    torch.onnx.export(
+        actor,
+        dummy_input,
+        onnx_path,
+        export_params=True,
+        opset_version=16,
+        do_constant_folding=True,
+        input_names=['input'],
+        output_names=['output'],
+        verbose=True
+    )
+    print(f"[INFO] Exported ONNX model to {onnx_path}")
+    
+    pt_path = os.path.join(exported_path, "model.pt")
+    torch.jit.trace(actor, dummy_input).save(pt_path)
+    print(f"[INFO] Exported .pt model to {pt_path}")
+
+    for _ in range(args_cli.video_length):
         with torch.no_grad():
             actions, _, _, _ = actor.get_action_and_value(
                 actor.obs_rms(obs, update=False)

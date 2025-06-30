@@ -46,7 +46,7 @@ def add_clean_rl_args(parser: argparse.ArgumentParser):
 
 
 def parse_clean_rl_cfg(task_name: str, args_cli: argparse.Namespace):
-    from omni.isaac.lab_tasks.utils.parse_cfg import load_cfg_from_registry
+    from isaaclab_tasks.utils.parse_cfg import load_cfg_from_registry
 
     # load the default configuration
     cleanrl_cfg = load_cfg_from_registry(task_name, "clean_rl_cfg_entry_point")
