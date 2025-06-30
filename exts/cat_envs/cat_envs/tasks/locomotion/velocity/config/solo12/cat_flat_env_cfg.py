@@ -5,30 +5,29 @@
 
 import math
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
-from omni.isaac.lab.envs import ManagerBasedRLEnvCfg
-from omni.isaac.lab.managers import CurriculumTermCfg as CurrTerm
-from omni.isaac.lab.managers import EventTermCfg as EventTerm
-from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
-from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.lab.managers import RewardTermCfg as RewTerm
+import isaaclab.sim as sim_utils
+from isaaclab.assets import ArticulationCfg, AssetBaseCfg
+from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.managers import CurriculumTermCfg as CurrTerm
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.managers import RewardTermCfg as RewTerm
 from cat_envs.tasks.utils.cat.manager_constraint_cfg import (
     ConstraintTermCfg as ConstraintTerm,
 )
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
-from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab.sensors import ContactSensorCfg
-from omni.isaac.lab.terrains import TerrainImporterCfg
-from omni.isaac.lab.utils import configclass
-from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
-from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
+from isaaclab.terrains import TerrainImporterCfg
+from isaaclab.utils import configclass
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 import cat_envs.tasks.utils.cat.constraints as constraints
 import cat_envs.tasks.utils.cat.curriculums as curriculums
-import cat_envs.tasks.utils.mdp.observations as observations
 
 import cat_envs.tasks.utils.mdp.terminations as terminations
 import cat_envs.tasks.utils.mdp.events as events
@@ -155,43 +154,17 @@ class ObservationsCfg:
             func=mdp.projected_gravity, noise=Unoise(n_min=-0.05, n_max=0.05), scale=0.1
         )
         joint_pos = ObsTerm(
-            func=observations.joint_pos,
+            func=mdp.joint_pos,
             params={
-                "names": [
-                    "FL_HAA",
-                    "FL_HFE",
-                    "FL_KFE",
-                    "FR_HAA",
-                    "FR_HFE",
-                    "FR_KFE",
-                    "HR_HAA",
-                    "HR_HFE",
-                    "HR_KFE",
-                    "HL_HAA",
-                    "HL_HFE",
-                    "HL_KFE",
-                ]
+                "asset_cfg": SceneEntityCfg("robot", joint_names=["FL_HAA", "FL_HFE", "FL_KFE", "FR_HAA", "FR_HFE", "FR_KFE", "HR_HAA", "HR_HFE", "HR_KFE", "HL_HAA", "HL_HFE", "HL_KFE"], preserve_order=True)
             },
             noise=Unoise(n_min=-0.01, n_max=0.01),
             scale=1.0,
         )
         joint_vel = ObsTerm(
-            func=observations.joint_vel,
+            func=mdp.joint_vel,
             params={
-                "names": [
-                    "FL_HAA",
-                    "FL_HFE",
-                    "FL_KFE",
-                    "FR_HAA",
-                    "FR_HFE",
-                    "FR_KFE",
-                    "HR_HAA",
-                    "HR_HFE",
-                    "HR_KFE",
-                    "HL_HAA",
-                    "HL_HFE",
-                    "HL_KFE",
-                ]
+                "asset_cfg": SceneEntityCfg("robot", joint_names=["FL_HAA", "FL_HFE", "FL_KFE", "FR_HAA", "FR_HFE", "FR_KFE", "HR_HAA", "HR_HFE", "HR_KFE", "HL_HAA", "HL_HFE", "HL_KFE"], preserve_order=True)
             },
             noise=Unoise(n_min=-0.2, n_max=0.2),
             scale=0.05,
@@ -289,22 +262,26 @@ class ConstraintsCfg:
     joint_torque = ConstraintTerm(
         func=constraints.joint_torque,
         max_p=0.25,
-        params={"limit": 3.0, "names": [".*_HAA", ".*_HFE", ".*_KFE"]},
+        params={"limit": 3.0, 
+                "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])},
     )
     joint_velocity = ConstraintTerm(
         func=constraints.joint_velocity,
         max_p=0.25,
-        params={"limit": 16.0, "names": [".*_HAA", ".*_HFE", ".*_KFE"]},
+        params={"limit": 16.0, 
+                "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])},
     )
     joint_acceleration = ConstraintTerm(
         func=constraints.joint_acceleration,
         max_p=0.25,
-        params={"limit": 800.0, "names": [".*_HAA", ".*_HFE", ".*_KFE"]},
+        params={"limit": 800.0, 
+                "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])},
     )
     action_rate = ConstraintTerm(
         func=constraints.action_rate,
         max_p=0.25,
-        params={"limit": 80.0, "names": [".*_HAA", ".*_HFE", ".*_KFE"]},
+        params={"limit": 80.0, 
+                "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])},
     )
 
     # Safety Hard constraints
@@ -312,52 +289,68 @@ class ConstraintsCfg:
     contact = ConstraintTerm(
         func=constraints.contact,
         max_p=1.0,
-        params={"names": ["base_link", ".*_UPPER_LEG"]},
+        params={
+                "asset_cfg": SceneEntityCfg("contact_forces", body_names=["base_link", ".*_UPPER_LEG"])},
     )
     foot_contact_force = ConstraintTerm(
         func=constraints.foot_contact_force,
         max_p=1.0,
-        params={"limit": 50.0, "names": [".*_FOOT"]},
+        params={"limit": 50.0, 
+                "asset_cfg": SceneEntityCfg("contact_forces", body_names=".*_FOOT")},
     )
     front_hfe_position = ConstraintTerm(
         func=constraints.joint_position,
         max_p=1.0,
-        params={"limit": 1.3, "names": ["FL_HFE", "FR_HFE"]},
+        params={"limit": 1.3, 
+                "asset_cfg": SceneEntityCfg("robot", joint_names=["FL_HFE", "FR_HFE"])},
     )
     upsidedown = ConstraintTerm(
-        func=constraints.upsidedown, max_p=1.0, params={"limit": 0.0}
+        func=constraints.upsidedown, 
+        max_p=1.0,
+        params={"limit": 0.0,
+                "asset_cfg": SceneEntityCfg("robot")}
     )
 
     # Style constraints
     hip_position = ConstraintTerm(
         func=constraints.joint_position_when_moving_forward,
         max_p=0.25,
-        params={"limit": 0.2, "names": [".*_HAA"], "velocity_deadzone": 0.1},
+        params={
+            "limit": 0.2, 
+            "velocity_deadzone": 0.1,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA"])},
     )
     base_orientation = ConstraintTerm(
-        func=constraints.base_orientation, max_p=0.25, params={"limit": 0.1}
+        func=constraints.base_orientation, 
+        max_p=0.25, 
+        params={
+            "limit": 0.1,
+            "asset_cfg": SceneEntityCfg("robot")}
     )
     air_time = ConstraintTerm(
         func=constraints.air_time,
         max_p=0.25,
-        params={"limit": 0.25, "names": [".*_FOOT"], "velocity_deadzone": 0.1},
+        params={
+            "limit": 0.25, 
+            "velocity_deadzone": 0.1,
+            "asset_cfg": SceneEntityCfg("contact_forces", body_names=".*_FOOT")},
     )
     no_move = ConstraintTerm(
         func=constraints.no_move,
         max_p=0.1,
         params={
-            "names": [".*_HAA", ".*_HFE", ".*_KFE"],
             "velocity_deadzone": 0.1,
             "joint_vel_limit": 4.0,
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])
         },
     )
     two_foot_contact = ConstraintTerm(
         func=constraints.n_foot_contact,
         max_p=0.25,
         params={
-            "names": [".*_FOOT"],
             "number_of_desired_feet": 2,
             "min_command_value": 0.5,
+            "asset_cfg": SceneEntityCfg("contact_forces", body_names=".*_FOOT")
         },
     )
 

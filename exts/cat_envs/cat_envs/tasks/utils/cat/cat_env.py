@@ -9,8 +9,8 @@ from __future__ import annotations
 import torch
 from collections.abc import Sequence
 
-from omni.isaac.lab.envs.common import VecEnvStepReturn
-from omni.isaac.lab.envs.manager_based_rl_env import ManagerBasedRLEnv
+from isaaclab.envs.common import VecEnvStepReturn
+from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 from cat_envs.tasks.utils.cat.constraint_manager import ConstraintManager
 
 
@@ -35,7 +35,7 @@ class CaTEnv(ManagerBasedRLEnv):
         # prepare the managers
         # -- constraint manager
 
-        if self.cfg.constraints:
+        if hasattr(self.cfg, "constraints"):
             self.constraint_manager = ConstraintManager(self.cfg.constraints, self)
             print("[INFO] Constraint Manager: ", self.constraint_manager)
 
@@ -96,7 +96,7 @@ class CaTEnv(ManagerBasedRLEnv):
         self.reset_terminated = self.termination_manager.terminated
         self.reset_time_outs = self.termination_manager.time_outs
         # -- CaT constraints prob computation
-        if self.cfg.constraints:
+        if hasattr(self.cfg, "constraints"):
             cstr_prob = self.constraint_manager.compute()
             # -- constrained reward computation
             self.reward_buf = torch.clip(
@@ -177,7 +177,7 @@ class CaTEnv(ManagerBasedRLEnv):
         info = self.reward_manager.reset(env_ids)
         self.extras["log"].update(info)
         # -- constraints manager
-        if self.cfg.constraints:
+        if hasattr(self.cfg, "constraints"):
             info = self.constraint_manager.reset(env_ids)
             self.extras["log"].update(info)
         # -- curriculum manager

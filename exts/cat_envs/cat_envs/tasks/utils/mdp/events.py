@@ -9,12 +9,12 @@ import torch
 from typing import TYPE_CHECKING
 
 
-import omni.isaac.lab.utils.math as math_utils
-from omni.isaac.lab.assets import Articulation, RigidObject
-from omni.isaac.lab.managers import SceneEntityCfg
+import isaaclab.utils.math as math_utils
+from isaaclab.assets import Articulation, RigidObject
+from isaaclab.managers import SceneEntityCfg
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedEnv
+    from isaaclab.envs import ManagerBasedEnv
 
 
 def randomize_body_coms(

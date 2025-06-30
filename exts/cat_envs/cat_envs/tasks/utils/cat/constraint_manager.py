@@ -3,374 +3,263 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Constraint manager for computing prob signals for a given world."""
+"""Optimized constraint manager for computing prob signals for a given world."""
 
 from __future__ import annotations
 
 import torch
 from collections.abc import Sequence
 from prettytable import PrettyTable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
-from omni.isaac.lab.managers.manager_base import ManagerBase, ManagerTermBase
+from isaaclab.managers.manager_base import ManagerBase, ManagerTermBase
 from .manager_constraint_cfg import ConstraintTermCfg
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedRLEnv
+    from isaaclab.envs import ManagerBasedRLEnv
 
 
 class CaT:
-    """Handle the computation of termination probabilities based on constraints
-    violations (Constraints as Terminations).
+    """Handle the computation of termination probabilities based on constraints violations."""
 
-    Args:
-        tau (float): discount factor
-        min_p (float): minimum termination probability
-    """
-
-    def __init__(self, tau=0.95, min_p=0.0):
-        self.running_maxes = {}  # Polyak average of the maximum constraint violation
-        self.running_mins = {}  # Polyak average of the minimum constraint violation
-        self.probs = {}  # Termination probabilities for each constraint
-        self.max_p = {}
-        self.raw_constraints = {}
-        self.tau = tau  # Discount factor
-        self.min_p = min_p  # Minimum termination probability
+    def __init__(self, tau: float = 0.95, min_p: float = 0.0):
+        self.running_maxes: Dict[str, torch.Tensor] = {}  # Polyak average of max constraint violation
+        self.probs: Dict[str, torch.Tensor] = {}         # Termination probabilities
+        self.max_p: Dict[str, torch.Tensor] = {}         # Maximum termination probabilities
+        self.raw_constraints: Dict[str, torch.Tensor] = {} # Raw constraint values
+        self.tau = tau                                  # Discount factor
+        self.min_p = min_p                              # Minimum termination probability
+        self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def reset(self):
-        """Reset the termination probabilities of the constraint manager."""
-        self.probs = {}
-        self.raw_constraints = {}
+        """Reset the termination probabilities and constraints."""
+        self.probs.clear()
+        self.raw_constraints.clear()
 
-    def add(self, name, constraint, max_p=0.1):
-        """Add a constraint violation to the constraint manager and compute the
-        associated termination probability.
-
-        Args:
-            name (string): name of the constraint
-            constraint (float tensor): value of constraint violations for this constraint
-            max_p (float): maximum termination probability
-        """
-
-        # First, put constraint in the form Torch.FloatTensor((num_envs, n_constraints))
-        # Convert constraints violation to float if they are not
+    def add(self, name: str, constraint: torch.Tensor, max_p: float = 0.1):
+        """Add and process a constraint violation."""
+        # Ensure constraint is on the correct device and properly shaped
+        if constraint.device != self._device:
+            constraint = constraint.to(self._device)
+            
+        # Convert to float if needed and ensure proper shape
         if not torch.is_floating_point(constraint):
             constraint = constraint.float()
-
-        # Ensure constraint is 2-dimensional even with a single element
-        if len(constraint.size()) == 1:
+        if constraint.ndim == 1:
             constraint = constraint.unsqueeze(1)
 
-        # Get the maximum constraint violation for the current step
-        constraint_max = constraint.max(dim=0, keepdim=True)[0].clamp(min=1e-6)
-
-        # Compute polyak average of the maximum constraint violation for this constraint
-        if name not in self.running_maxes:
-            self.running_maxes[name] = constraint_max
-        else:
-            self.running_maxes[name] = (
-                self.tau * self.running_maxes[name] + (1.0 - self.tau) * constraint_max
-            )
-
+        # Store raw constraints
         self.raw_constraints[name] = constraint
 
-        # Get samples for which there is a constraint violation
-        mask = constraint > 0.0
+        # Compute constraint max with clamping for numerical stability
+        constraint_max = constraint.max(dim=0, keepdim=True)[0].clamp(min=1e-6)
 
-        # Compute the termination probability which scales between min_p and max_p with
-        # increasing constraint violation. Remains at 0 when there is no violation.
+        # Update running max using in-place operations when possible
+        if name in self.running_maxes:
+            self.running_maxes[name].mul_(self.tau).add_((1.0 - self.tau) * constraint_max)
+        else:
+            self.running_maxes[name] = constraint_max
+
+        # Pre-allocate probability tensor
         probs = torch.zeros_like(constraint)
-        probs[mask] = self.min_p + torch.clamp(
-            constraint[mask]
-            / (self.running_maxes[name].expand(constraint.size())[mask]),
-            min=0.0,
-            max=1.0,
-        ) * (max_p - self.min_p)
+        
+        # Compute mask of violations only once
+        mask = constraint > 0.0
+        if mask.any():
+            # Compute normalized violations with broadcasting
+            normalized = constraint / self.running_maxes[name].expand_as(constraint)
+            # Compute probabilities only for violating samples
+            probs[mask] = self.min_p + torch.clamp(normalized[mask], 0.0, 1.0) * (max_p - self.min_p)
+
         self.probs[name] = probs
-        self.max_p[name] = torch.tensor(max_p, device=constraint.device).repeat(
-            constraint.shape[1]
-        )
+        self.max_p[name] = torch.full((constraint.shape[1],), max_p, 
+                                    dtype=torch.float, device=self._device)
 
-    def get_probs(self):
+    def get_probs(self) -> torch.Tensor:
         """Returns the termination probabilities due to constraint violations."""
-        probs = torch.cat(list(self.probs.values()), dim=1)
-        probs = probs.max(1).values
-        return probs
+        if not self.probs:
+            return torch.tensor([], device=self._device)
+        return torch.cat(list(self.probs.values()), dim=1).max(1).values
 
-    def get_raw_constraints(self):
-        return torch.cat(list(self.raw_constraints.values()), dim=1)
+    def get_raw_constraints(self) -> torch.Tensor:
+        return torch.cat(list(self.raw_constraints.values()), dim=1) if self.raw_constraints else torch.tensor([], device=self._device)
 
-    def get_running_maxes(self):
-        return torch.cat(list(self.running_maxes.values()), dim=1)
+    def get_running_maxes(self) -> torch.Tensor:
+        return torch.cat(list(self.running_maxes.values()), dim=1) if self.running_maxes else torch.tensor([], device=self._device)
 
-    def get_max_p(self):
-        return torch.cat(list(self.max_p.values()))
+    def get_max_p(self) -> torch.Tensor:
+        return torch.cat(list(self.max_p.values())) if self.max_p else torch.tensor([], device=self._device)
 
-    def get_str(self, names=None):
-        """Get a debug string with constraints names and their average termination probabilities"""
-        if names is None:
-            names = list(self.probs.keys())
-        txt = ""
+    def get_str(self, names: List[str] | None = None) -> str:
+        """Get debug string with constraints names and average termination probabilities"""
+        names = names or list(self.probs.keys())
+        parts = []
         for name in names:
-            txt += " {}: {}".format(
-                name,
-                str(
-                    100.0 * self.probs[name].max(1).values.gt(0.0).float().mean().item()
-                )[:4],
-            )
-            # txt += " {}: {}".format(name, str(100.0*self.probs[name].max(1).values.float().mean().item())[:4])
+            prob = 100.0 * self.probs[name].max(1).values.gt(0.0).float().mean().item()
+            parts.append(f"{name}: {prob:.1f}")
+        return " ".join(parts)
 
-        return txt[1:]
-
-    def log_all(self, episode_sums):
+    def log_all(self, episode_sums: Dict[str, torch.Tensor]):
         """Log terminations probabilities in episode_sums with cstr_NAME key."""
-        for name in list(self.probs.keys()):
-            values = self.probs[name].max(1).values.gt(0.0).float()
-            if "cstr_" + name not in episode_sums:
-                episode_sums["cstr_" + name] = torch.zeros_like(values)
-            episode_sums["cstr_" + name] += values
+        for name, probs in self.probs.items():
+            key = f"cstr_{name}"
+            values = probs.max(1).values.gt(0.0).float()
+            if key not in episode_sums:
+                episode_sums[key] = torch.zeros_like(values)
+            episode_sums[key].add_(values)
 
-    def get_names(self):
-        """Return a list of all constraint names."""
+    def get_names(self) -> List[str]:
         return list(self.probs.keys())
 
-    def get_vals(self):
-        """Return a list of all constraint termination probabilities."""
-        res = []
-        for key in self.probs.keys():
-            res += [100.0 * self.probs[key].max(1).values.gt(0.0).float().mean().item()]
-        return res
+    def get_vals(self) -> List[float]:
+        return [100.0 * probs.max(1).values.gt(0.0).float().mean().item() 
+               for probs in self.probs.values()]
 
 
 class ConstraintManager(ManagerBase):
     _env: ManagerBasedRLEnv
-    """The environment instance."""
 
     def __init__(
         self, cfg: object, env: ManagerBasedRLEnv, tau: float = 0.95, min_p: float = 0.0
     ):
-        """Initialize the reward manager.
-
-        Args:
-            cfg: The configuration object or dictionary (``dict[str, RewardTermCfg]``).
-            env: The environment instance.
-        """
-        # CaT
+        """Initialize the constraint manager."""
+        # Initialize CaT with device from env
         self.cat = CaT(tau, min_p)
-
-        # create buffers to parse and store terms
-        self._term_names: list[str] = list()
-        self._term_cfgs: list[ConstraintTermCfg] = list()
-        self._class_term_cfgs: list[ConstraintTermCfg] = list()
-
-        # call the base class constructor (this will parse the terms config)
+        self._device = env.device
+        
+        # Initialize buffers
+        self._term_names: List[str] = []
+        self._term_cfgs: List[ConstraintTermCfg] = []
+        self._class_term_cfgs: List[ConstraintTermCfg] = []
+        
+        # Initialize base class and parse terms
         super().__init__(cfg, env)
-        # prepare extra info to store individual constraint term information
-        self._episode_sums = dict()
-        self._cstr_mean_values = dict()
+        
+        # Pre-allocate buffers
+        self._episode_sums: Dict[str, torch.Tensor] = {}
+        self._cstr_mean_values: Dict[str, torch.Tensor] = {}
         for term_name in self._term_names:
-            self._episode_sums[term_name] = torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            )
-            self._cstr_mean_values[term_name] = torch.zeros(
-                self.num_envs, dtype=torch.float, device=self.device
-            )
-        # create buffer for managing constraint prob per environment
-        self._cstr_prob_buf = torch.zeros(
-            self.num_envs, dtype=torch.float, device=self.device
-        )
+            self._episode_sums[term_name] = torch.zeros(self.num_envs, 
+                                                      dtype=torch.float, 
+                                                      device=self._device)
+            self._cstr_mean_values[term_name] = torch.zeros(self.num_envs, 
+                                                          dtype=torch.float, 
+                                                          device=self._device)
+        
+        self._cstr_prob_buf = torch.zeros(self.num_envs, 
+                                         dtype=torch.float, 
+                                         device=self._device)
 
     def __str__(self) -> str:
-        """Returns: A string representation for reward manager."""
+        """Returns a string representation of the constraint manager."""
         msg = f"<ConstraintManager> contains {len(self._term_names)} active terms.\n"
-
-        # create table for term information
+        
         table = PrettyTable()
         table.title = "Active Constraint Terms"
         table.field_names = ["Index", "Name", "Limit", "Names", "Max p"]
-        # set alignment of table columns
         table.align["Name"] = "l"
         table.align["Limit"] = "r"
         table.align["Body"] = "r"
         table.align["Max p"] = "r"
-        # add info on each term
-        for index, (name, term_cfg) in enumerate(
-            zip(self._term_names, self._term_cfgs)
-        ):
-            if "limit" in term_cfg.params:
-                if "names" in term_cfg.params:
-                    table.add_row(
-                        [
-                            index,
-                            name,
-                            term_cfg.params["limit"],
-                            term_cfg.params["names"],
-                            term_cfg.max_p,
-                        ]
-                    )
-                else:
-                    table.add_row(
-                        [index, name, term_cfg.params["limit"], "-", term_cfg.max_p]
-                    )
+        
+        for index, (name, term_cfg) in enumerate(zip(self._term_names, self._term_cfgs)):
+            limit_value = term_cfg.params.get("limit", "-")
+            
+            names_value = "-"
+            if "asset_cfg" in term_cfg.params and term_cfg.params["asset_cfg"] is not None:
+                asset_cfg = term_cfg.params["asset_cfg"]
+                names_value = asset_cfg.body_names or asset_cfg.joint_names or "-"
             elif "names" in term_cfg.params:
-                table.add_row(
-                    [index, name, "-", term_cfg.params["names"], term_cfg.max_p]
+                import warnings
+                warnings.warn(
+                    "Using 'names' parameter is deprecated. Use 'asset_cfg' instead.",
+                    DeprecationWarning,
+                    stacklevel=2
                 )
-            else:
-                table.add_row([index, name, "-", "-", term_cfg.max_p])
-        # convert table to string
-        msg += table.get_string()
-        msg += "\n"
-
+                names_value = term_cfg.params["names"]
+            
+            table.add_row([index, name, limit_value, names_value, term_cfg.max_p])
+        
+        msg += table.get_string() + "\n"
         return msg
 
-    """
-    Properties.
-    """
-
     @property
-    def active_terms(self) -> list[str]:
-        """Name of active reward terms."""
+    def active_terms(self) -> List[str]:
         return self._term_names
 
-    """
-    Operations.
-    """
-
-    def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, torch.Tensor]:
-        """Returns the episodic sum of individual reward terms.
-
-        Args:
-            env_ids: The environment ids for which the episodic sum of
-                individual reward terms is to be returned. Defaults to all the environment ids.
-
-        Returns:
-            Dictionary of episodic sum of individual reward terms.
-        """
-        # resolve environment ids
-        if env_ids is None:
-            env_ids = slice(None)
-        # store information
+    def reset(self, env_ids: Sequence[int] | None = None) -> Dict[str, torch.Tensor]:
+        env_ids = slice(None) if env_ids is None else env_ids
         extras = {}
-        for key in self._episode_sums.keys():
-            # store information
-            extras["Episode_Constraint_violation/" + key] = (
-                torch.mean(
-                    self._episode_sums[key][env_ids]
-                    / self._env.episode_length_buf[env_ids],
-                    dim=0,
-                )
-                * 100
-            )
-            extras["Episode_Constraint_probability/" + key] = torch.mean(
-                self._cstr_mean_values[key][env_ids]
-                / self._env.episode_length_buf[env_ids],
-                dim=0,
-            )
-            # reset episodic sum
+        
+        for key in self._episode_sums:
+            # Compute mean values using in-place operations where possible
+            episode_lengths = self._env.episode_length_buf[env_ids]
+            violation_mean = (self._episode_sums[key][env_ids] / episode_lengths).mean() * 100
+            prob_mean = (self._cstr_mean_values[key][env_ids] / episode_lengths).mean()
+            
+            extras[f"Episode_Constraint_violation/{key}"] = violation_mean
+            extras[f"Episode_Constraint_probability/{key}"] = prob_mean
+            
+            # Reset buffers
             self._episode_sums[key][env_ids] = 0.0
             self._cstr_mean_values[key][env_ids] = 0.0
-        # reset all the constraints terms
+        
+        # Reset class terms
         for term_cfg in self._class_term_cfgs:
             term_cfg.func.reset(env_ids=env_ids)
-        # return logged information
+            
         return extras
 
     def compute(self) -> torch.Tensor:
-        """Computes the reward signal as a weighted sum of individual terms.
-
-        This function calls each reward term managed by the class and adds them to compute the net
-        reward signal. It also updates the episodic sums corresponding to individual reward terms.
-
-        Args:
-            dt: The time-step interval of the environment.
-
-        Returns:
-            The net reward signal of shape (num_envs,).
-        """
-        # iterate over all the reward terms
+        """Compute constraint probabilities with minimal overhead."""
+        # Process all constraints
         for name, term_cfg in zip(self._term_names, self._term_cfgs):
-            self.cat.add(
-                name, term_cfg.func(self._env, **term_cfg.params), term_cfg.max_p
-            )
+            self.cat.add(name, term_cfg.func(self._env, **term_cfg.params), term_cfg.max_p)
+        
+        # Get combined probabilities
         cstr_prob = self.cat.get_probs()
-
+        
+        # Update statistics
         for name in self._term_names:
-            self._episode_sums[name] += (
-                self.cat.probs[name].max(1).values.gt(0.0).float()
-            )
-            self._cstr_mean_values[name] += self.cat.probs[name].max(1).values
-
+            probs = self.cat.probs[name]
+            max_probs = probs.max(1).values
+            self._episode_sums[name].add_(max_probs.gt(0.0).float())
+            self._cstr_mean_values[name].add_(max_probs)
+        
         return cstr_prob
 
-    """
-    Operations - Term settings.
-    """
-
     def set_term_cfg(self, term_name: str, cfg: ConstraintTermCfg):
-        """Sets the configuration of the specified term into the manager.
-
-        Args:
-            term_name: The name of the reward term.
-            cfg: The configuration for the reward term.
-
-        Raises:
-            ValueError: If the term name is not found.
-        """
         if term_name not in self._term_names:
             raise ValueError(f"Constraint term '{term_name}' not found.")
-        # set the configuration
         self._term_cfgs[self._term_names.index(term_name)] = cfg
 
     def get_term_cfg(self, term_name: str) -> ConstraintTermCfg:
-        """Gets the configuration for the specified term.
-
-        Args:
-            term_name: The name of the reward term.
-
-        Returns:
-            The configuration of the reward term.
-
-        Raises:
-            ValueError: If the term name is not found.
-        """
         if term_name not in self._term_names:
             raise ValueError(f"Constraint term '{term_name}' not found.")
-        # return the configuration
         return self._term_cfgs[self._term_names.index(term_name)]
 
-    """
-    Helper functions.
-    """
-
     def _prepare_terms(self):
-        # check if config is dict already
-        if isinstance(self.cfg, dict):
-            cfg_items = self.cfg.items()
-        else:
-            cfg_items = self.cfg.__dict__.items()
-        # iterate over all the terms
+        cfg_items = self.cfg.items() if isinstance(self.cfg, dict) else self.cfg.__dict__.items()
+        
         for term_name, term_cfg in cfg_items:
-            # check for non config
             if term_cfg is None:
                 continue
-            # check for valid config type
+                
             if not isinstance(term_cfg, ConstraintTermCfg):
                 raise TypeError(
-                    f"Configuration for the term '{term_name}' is not of type ConstraintTermCfg."
-                    f" Received: '{type(term_cfg)}'."
+                    f"Configuration for term '{term_name}' is not ConstraintTermCfg. "
+                    f"Received: '{type(term_cfg)}'."
                 )
-            # check for valid limit type
+                
             if not isinstance(term_cfg.max_p, (float, int)):
                 raise TypeError(
-                    f"Limit for the term '{term_name}' is not of type float or int."
-                    f" Received: '{type(term_cfg.max_p)}'."
+                    f"Limit for term '{term_name}' must be float or int. "
+                    f"Received: '{type(term_cfg.max_p)}'."
                 )
-            # resolve common parameters
+                
             self._resolve_common_term_cfg(term_name, term_cfg, min_argc=1)
-            # add function to list
             self._term_names.append(term_name)
             self._term_cfgs.append(term_cfg)
-            # check if the term is a class
+            
             if isinstance(term_cfg.func, ManagerTermBase):
                 self._class_term_cfgs.append(term_cfg)

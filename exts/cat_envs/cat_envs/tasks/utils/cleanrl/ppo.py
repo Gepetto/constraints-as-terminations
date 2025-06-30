@@ -101,19 +101,26 @@ class Agent(nn.Module):
     def get_value(self, x):
         return self.critic(x)
 
-    def get_action_and_value(self, x, action=None):
+    def get_action_and_value(self, x, action=None, deterministic=False):
         action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
-            action = probs.sample()
+            if not deterministic:
+                action = probs.sample()
+            else:
+                action = action_mean
         return (
             action,
             probs.log_prob(action).sum(1),
             probs.entropy().sum(1),
             self.critic(x),
         )
+    
+    def forward(self, x, deterministic=True):
+        action, _, _, _ = self.get_action_and_value(self.obs_rms(x, update=False), deterministic=deterministic)
+        return action
 
 
 def PPO(envs, ppo_cfg, run_path):
@@ -239,10 +246,6 @@ def PPO(envs, ppo_cfg, run_path):
                 writer.add_scalar(key, value, iteration)
             else:
                 writer.add_scalar("Episode/" + key, value, iteration)
-
-        # CaT: must compute the CaT quantity
-        not_dones = 1.0 - dones
-        rewards *= not_dones
 
         # bootstrap value if not done
         with torch.no_grad():

@@ -8,12 +8,12 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
-from omni.isaac.lab.utils import configclass
-import omni.isaac.lab.utils.math as math_utils
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab.utils import configclass
+import isaaclab.utils.math as math_utils
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedEnv
+    from isaaclab.envs import ManagerBasedEnv
 
 
 class UniformVelocityCommandWithDeadzone(mdp.UniformVelocityCommand):

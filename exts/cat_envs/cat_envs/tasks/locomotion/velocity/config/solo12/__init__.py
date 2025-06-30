@@ -20,6 +20,7 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{__name__}.cat_flat_env_cfg:Solo12FlatEnvCfg",
         "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
     },
 )
 
@@ -31,5 +32,6 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{__name__}.cat_flat_env_cfg:Solo12FlatEnvCfg_PLAY",
         "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
     },
 )

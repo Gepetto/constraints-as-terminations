@@ -12,9 +12,9 @@ This implementation was built by Constant Roux and Maciej Stępień.
 
 This paper has been accepted for the 2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS 2024).
 
-This code relies on the [CleanRL](https://github.com/vwxyzjn/cleanrl) library and [IsaacLab](https://isaac-sim.github.io/IsaacLab/v1.4.1/index.html) (version 1.4.1).
+This code relies on either the [CleanRL](https://github.com/vwxyzjn/cleanrl) library or [RLGames](https://github.com/Denys88/rl_games) and [IsaacLab](https://isaac-sim.github.io/IsaacLab/v2.1.0/index.html) (version 2.1.0).
 
-Implementation of the constraints manager and modification of the environment can be found in the [CaT directory](exts/cat_envs/cat_envs/tasks/utils/cat/). The modified PPO implementation can be found in the [CleanRL directory](exts/cat_envs/cat_envs/tasks/utils/cleanrl/).
+Implementation of the constraints manager and modification of the environment can be found in the [CaT directory](exts/cat_envs/cat_envs/tasks/utils/cat/).
 
 `ConstraintsManager` follows the manager-based Isaac Lab approach, allowing easy integration just like other managers. For a full example, check out [cat_flat_env_cfg.py](exts/cat_envs/cat_envs/tasks/locomotion/velocity/config/solo12/cat_flat_env_cfg.py).
 
@@ -25,19 +25,19 @@ class ConstraintsCfg:
     joint_torque = ConstraintTerm(
         func=constraints.joint_torque,
         max_p=0.25,
-        params={"limit": 3.0, "names": [".*_HAA", ".*_HFE", ".*_KFE"]},
+        params={"limit": 3.0, "asset_cfg": SceneEntityCfg("robot", joint_names=[".*_HAA", ".*_HFE", ".*_KFE"])},
     )
     # Safety Hard Constraints
     contact = ConstraintTerm(
         func=constraints.contact,
         max_p=1.0,
-        params={"names": ["base_link", ".*_UPPER_LEG"]},
+        params={"asset_cfg": SceneEntityCfg("contact_forces", body_names=["base_link", ".*_UPPER_LEG"])},
     )
 ```
 
 ## Installation
 
-- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/v1.4.1/source/setup/installation/index.html).
+- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/v2.1.0/source/setup/installation/pip_installation.html).
 - Clone the repository separately from the Isaac Lab installation (i.e., outside the `IsaacLab` directory).
 - Using a Python interpreter that has Isaac Lab installed, install the library:
 
@@ -47,18 +47,25 @@ python -m pip install -e exts/cat_envs
 
 ## Running CaT
 
-Navigate to the `/constraints-as-terminations` directory and launch a basic training setup on flat ground:
+Navigate to the `/constraints-as-terminations` directory and launch a basic training setup on flat ground with cleanRL:
 
 ```bash
 python scripts/clean_rl/train.py --task=Isaac-Velocity-CaT-Flat-Solo12-v0 --headless
 ```
-
-If everything goes well, you will see monitoring statistics in the terminal as the training progresses. At the end, you can check the result with:
-
+or with RLGames:
 ```bash
-python scripts/clean_rl/play.py --task=Isaac-Velocity-CaT-Flat-Solo12-v0
+python scripts/rl_games/train.py --task=Isaac-Velocity-CaT-Flat-Solo12-v0 --headless
 ```
 
+If everything goes well, you will see monitoring statistics in the terminal as the training progresses. At the end, you can check the result with cleanRL:
+
+```bash
+python scripts/clean_rl/play.py --task=Isaac-Velocity-CaT-Flat-Solo12-Play-v0 --headless --video --video_length 200
+```
+or with RLGames:
+```bash
+python scripts/rl_games/play.py --task=Isaac-Velocity-CaT-Flat-Solo12-Play-v0 --headless --video --video_length 200
+```
 ## Citing
 
 Please cite this work as:

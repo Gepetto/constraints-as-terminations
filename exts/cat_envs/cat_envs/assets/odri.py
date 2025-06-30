@@ -12,9 +12,9 @@ The following configurations are available:
 
 """
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.actuators import IdealPDActuatorCfg
-from omni.isaac.lab.assets.articulation import ArticulationCfg
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import IdealPDActuatorCfg
+from isaaclab.assets.articulation import ArticulationCfg
 
 
 SOLO12_CFG = ArticulationCfg(

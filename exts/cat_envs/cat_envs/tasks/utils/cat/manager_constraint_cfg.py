@@ -11,8 +11,8 @@ import torch
 from collections.abc import Callable
 from dataclasses import MISSING
 
-from omni.isaac.lab.utils import configclass
-from omni.isaac.lab.managers.manager_term_cfg import ManagerTermBaseCfg
+from isaaclab.utils import configclass
+from isaaclab.managers.manager_term_cfg import ManagerTermBaseCfg
 
 
 ##
